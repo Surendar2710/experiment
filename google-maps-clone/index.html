@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Maps</title>
+<meta name="description" content="A front-end clone of the Google Maps UI, built with Leaflet and OpenStreetMap data." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="vendor/leaflet-routing-machine/leaflet-routing-machine.css" />
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ LEFT SIDEBAR ============ -->
+  <div id="sideColumn" class="side-column">
+
+    <!-- Search bar: stays pinned to the top on mobile, above the sheet -->
+    <div class="search-bar">
+      <button id="menuBtn" class="icon-btn" title="Menu" aria-label="Toggle results panel"></button>
+      <div class="search-box">
+        <span class="search-box-icon"></span>
+        <input id="searchInput" type="text" placeholder="Search Maps" autocomplete="off" />
+        <button id="clearSearchBtn" class="icon-btn small" hidden title="Clear" aria-label="Clear search"></button>
+        <span class="search-box-mic"></span>
+      </div>
+      <button id="avatarBtn" class="avatar" title="Account">S</button>
+    </div>
+
+    <!-- Quick filter chips -->
+    <div id="chipRow" class="chip-row">
+      <button class="chip" data-filter="all">All</button>
+      <button class="chip" data-category="restaurant">Restaurants</button>
+      <button class="chip" data-category="hotel">Hotels</button>
+      <button class="chip" data-category="cafe">Coffee</button>
+      <button class="chip" data-category="museum">Museums</button>
+      <button class="chip" data-category="park">Parks</button>
+      <button class="chip" data-category="landmark">Landmarks</button>
+    </div>
+
+  <!-- Panels: a normal column on desktop, a draggable-feeling bottom sheet on mobile -->
+  <aside id="sidebar" class="sidebar">
+    <button id="sheetHandle" class="sheet-handle" aria-label="Expand or collapse panel">
+      <span class="handle-bar"></span>
+    </button>
+
+    <!-- Default results list (shown on load / while searching) -->
+    <div id="resultsPanel" class="panel results-panel">
+      <p class="panel-hint">Try searching “pizza”, “museum”, or pick a category above.</p>
+      <ul id="resultsList" class="results-list"></ul>
+    </div>
+
+    <!-- Place detail card (shown when a marker/result is selected) -->
+    <div id="placeDetail" class="panel place-detail" hidden>
+      <button id="detailBackBtn" class="icon-btn" title="Back" aria-label="Back to results"></button>
+      <div class="place-hero" id="placeHero"></div>
+      <div class="place-body">
+        <h1 id="placeName"></h1>
+        <div class="place-rating-row">
+          <span id="placeRatingNum"></span>
+          <span id="placeStars" class="stars"></span>
+          <span id="placeReviews" class="muted"></span>
+        </div>
+        <div id="placeCategory" class="muted place-category"></div>
+
+        <div class="action-row">
+          <button id="directionsBtn" class="action-btn primary">
+            <span class="action-icon" data-icon="directions"></span>
+            Directions
+          </button>
+          <button class="action-btn">
+            <span class="action-icon" data-icon="bookmark"></span>
+            Save
+          </button>
+          <button class="action-btn">
+            <span class="action-icon" data-icon="share"></span>
+            Share
+          </button>
+          <button class="action-btn">
+            <span class="action-icon" data-icon="phone"></span>
+            Send
+          </button>
+        </div>
+
+        <div class="info-list">
+          <div class="info-row"><span class="info-icon" data-icon="locate"></span><span id="placeAddress"></span></div>
+          <div class="info-row"><span class="info-icon" data-icon="clock"></span><span id="placeHours"></span></div>
+        </div>
+
+        <p id="placeBlurb" class="place-blurb"></p>
+      </div>
+    </div>
+
+    <!-- Directions panel -->
+    <div id="directionsPanel" class="panel directions-panel" hidden>
+      <div class="directions-header">
+        <button id="directionsBackBtn" class="icon-btn" title="Back" aria-label="Close directions"></button>
+        <div class="directions-inputs">
+          <div class="dir-field">
+            <span class="dir-dot origin-dot"></span>
+            <input id="originInput" type="text" placeholder="Your location" />
+          </div>
+          <div class="dir-field">
+            <span class="dir-dot destination-dot"></span>
+            <input id="destinationInput" type="text" placeholder="Choose destination" />
+          </div>
+        </div>
+        <button id="swapBtn" class="icon-btn" title="Swap origin/destination" aria-label="Swap"></button>
+      </div>
+
+      <div class="mode-row">
+        <button class="mode-btn active" data-mode="car" title="Driving"></button>
+        <button class="mode-btn" data-mode="walk" title="Walking"></button>
+        <button class="mode-btn" data-mode="bike" title="Cycling"></button>
+        <button class="mode-btn" data-mode="transit" title="Transit"></button>
+      </div>
+
+      <div id="routeSummary" class="route-summary" hidden></div>
+      <div id="routeError" class="route-error" hidden></div>
+      <ol id="routeSteps" class="route-steps"></ol>
+    </div>
+
+  </aside>
+  </div>
+
+  <!-- ============ MAP ============ -->
+  <main class="map-wrap">
+    <div id="map"></div>
+
+    <!-- Layers / base-map switcher -->
+    <div id="layersPanelToggle" class="layers-toggle" title="Layers">
+      <div class="layers-thumb roadmap-thumb"></div>
+    </div>
+    <div id="layersPanel" class="layers-panel" hidden>
+      <button class="layer-option active" data-layer="roadmap">
+        <span class="layers-thumb roadmap-thumb"></span> Default
+      </button>
+      <button class="layer-option" data-layer="satellite">
+        <span class="layers-thumb satellite-thumb"></span> Satellite
+      </button>
+      <button class="layer-option" data-layer="terrain">
+        <span class="layers-thumb terrain-thumb"></span> Terrain
+      </button>
+      <hr />
+      <button class="layer-toggle-row" id="darkModeToggle">
+        <span>Dark mode</span>
+        <span class="switch" id="darkSwitch"></span>
+      </button>
+      <button class="layer-toggle-row" id="trafficToggle">
+        <span>Traffic (demo)</span>
+        <span class="switch" id="trafficSwitch"></span>
+      </button>
+    </div>
+
+    <!-- Right-side floating controls -->
+    <div class="map-controls">
+      <button id="locateBtn" class="map-btn" title="Show your location"></button>
+      <div class="zoom-group">
+        <button id="zoomInBtn" class="map-btn" title="Zoom in"></button>
+        <button id="zoomOutBtn" class="map-btn" title="Zoom out"></button>
+      </div>
+      <button id="compassBtn" class="map-btn" title="Reset north"></button>
+    </div>
+
+    <!-- Bottom info / attribution bar -->
+    <div class="bottom-bar">
+      <span id="coordsLabel" class="coords-label"></span>
+      <span class="bottom-spacer"></span>
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">Map data ©OpenStreetMap</a>
+      <span class="dot">·</span>
+      <a href="#" id="keyboardShortcutsLink">Keyboard shortcuts</a>
+      <span class="dot">·</span>
+      <a href="#" id="termsLink">Terms</a>
+    </div>
+
+    <!-- Toast used for demo-only actions (Save/Share/Send/Traffic) -->
+    <div id="toast" class="toast" hidden></div>
+  </main>
+</div>
+
+<!-- Keyboard shortcuts modal -->
+<div id="shortcutsModal" class="modal-backdrop" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Keyboard shortcuts</h2>
+      <button id="closeShortcutsBtn" class="icon-btn" aria-label="Close"></button>
+    </div>
+    <table class="shortcuts-table">
+      <tr><td>Zoom in / out</td><td><kbd>+</kbd> / <kbd>&minus;</kbd></td></tr>
+      <tr><td>Pan</td><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&larr;</kbd> <kbd>&rarr;</kbd></td></tr>
+      <tr><td>Search</td><td><kbd>/</kbd></td></tr>
+      <tr><td>Close panel</td><td><kbd>Esc</kbd></td></tr>
+    </table>
+  </div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/leaflet-routing-machine/leaflet-routing-machine.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/places.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
